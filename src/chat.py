@@ -2,6 +2,7 @@ import torch
 from typing import List, Dict
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
+
 from dataclasses import dataclass
 
 ConversationHistory = List[Dict[str, str]]
@@ -9,12 +10,13 @@ ConversationHistory = List[Dict[str, str]]
 
 @dataclass
 class ChatConfig:
-    """
-    Configuration for chat settings
-    """
+    """Chat behavior configuration"""
 
-    max_tokens: int
-    max_length: int
+    max_tokens: int = 150
+    max_length: int = 1024
+    context_messages: int = 6
+    temperature: float = 0.7
+    do_sample: bool = True
 
 
 def build_conversation_context(
@@ -33,29 +35,41 @@ def build_conversation_context(
     return context
 
 
-def extract_response_from_output(full_response: str) -> str:
+def extract_response_from_output(full_response: str, debug: bool = False) -> str:
     """
     Parse model output to extract clean response
     """
+    if debug:
+        print(f"\n🔍 DEBUG - Full response length: {len(full_response)}")
+        if debug:  # Could add show_full_responses check here
+            print(f"🔍 DEBUG - Full response: '{full_response}'")
+
     if "[/INST]" in full_response:
         response = full_response.split("[/INST]")[-1].strip()
-        # print("Used [/INST] extraction")
+        if debug:
+            print("🔍 DEBUG - Used [/INST] extraction")
     elif "Please respond naturally" in full_response:
         parts = full_response.split("Please respond naturally to the latest message.")
         if len(parts) > 1:
             response = parts[-1].strip()
             if response.startswith("."):
                 response = response[1:].strip()
-            # print("Used instruction extraction")
+            if debug:
+                print("🔍 DEBUG - Used instruction extraction")
         else:
             response = "I had trouble parsing that response."
     else:
         response = full_response.strip()
-        # print("Used fallback - this shouldn't happen")
+        if debug:
+            print("🔍 DEBUG - Used fallback extraction")
 
     # Clean up any remaining prefixes
     if response.startswith("chatbot:"):
         response = response[len("chatbot:") :].strip()
+
+    if debug:
+        print(f"🔍 DEBUG - Extracted response: '{response}'")
+        print(f"🔍 DEBUG - Extracted length: {len(response)}")
 
     return response
 
@@ -64,19 +78,29 @@ def generate_response(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     prompt: str,
-    max_tokens: int,
-    max_length: int,
+    chat_config: ChatConfig,
+    debug: bool = False,
 ) -> str:
     """
     Generate response from model given a formatted prompt
     """
+    if debug:
+        print(f"\n🔍 DEBUG - Prompt length: {len(prompt)}")
+        print(
+            f"🔍 DEBUG - Max tokens: {chat_config.max_tokens}, Max length: {chat_config.max_length}"
+        )
+
     inputs = tokenizer(
         prompt,
         return_tensors="pt",
         padding=True,
         truncation=True,
-        max_length=max_length,
+        max_length=chat_config.max_length,
     )
+
+    input_length = inputs["input_ids"].shape[1]  # type: ignore
+    if debug:
+        print(f"🔍 DEBUG - Input token count: {input_length}")
 
     device = next(model.parameters()).device
     inputs = {k: v.to(device) for k, v in inputs.items()}
@@ -84,13 +108,19 @@ def generate_response(
     with torch.no_grad():
         outputs = model.generate(  # type: ignore
             **inputs,
-            max_new_tokens=max_tokens,
-            temperature=0.7,
-            do_sample=True,
+            max_new_tokens=chat_config.max_tokens,
+            temperature=chat_config.temperature,
+            do_sample=chat_config.do_sample,
             pad_token_id=tokenizer.eos_token_id,
         )
 
     full_response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    output_length = outputs[0].shape[0]
+
+    if debug:
+        print(f"🔍 DEBUG - Output token count: {output_length}")
+        print(f"🔍 DEBUG - New tokens generated: {output_length - input_length}")
+
     return full_response
 
 
@@ -98,39 +128,43 @@ def chat_turn(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     conversation_history: ConversationHistory,
-    # user_input: str,
-    max_tokens: int,
-    max_length: int,
+    chat_config: ChatConfig,
+    context_messages: int = 6,
+    debug: bool = False,
 ) -> str:
     """
     Orchestrate a complete chat turn
     """
     # 1. Build context from history
-    context = build_conversation_context(conversation_history)
+    context = build_conversation_context(conversation_history, context_messages)
 
     # 2. Create prompt
     prompt = f"<s>[INST] Previous conversation:\n{context}\nPlease respond naturally to the latest message. [/INST]"
 
     # 3. Generate response
-    full_response = generate_response(model, tokenizer, prompt, max_tokens, max_length)
+    full_response = generate_response(model, tokenizer, prompt, chat_config, debug)
 
     # 4. Extract clean response
-    clean_response = extract_response_from_output(full_response)
+    clean_response = extract_response_from_output(full_response, debug)
 
     return clean_response
 
 
 def chat_loop(
-    model: PreTrainedModel, tokenizer: PreTrainedTokenizer, chat_config: ChatConfig
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    chat_config: ChatConfig,
+    debug: bool = False,
+    context_messages: int = 6,
 ) -> None:
     """
-    Interactive chat loop
+    Interactive chat loop with configuration
     """
-    max_tokens = chat_config.max_tokens
-    max_length = chat_config.max_length
-
     conversation_history = []
     print("\nChat Started! Type 'exit' to end the chat.\n")
+
+    if debug:
+        print("🔍 DEBUG MODE ENABLED")
 
     while True:
         user_input = input("\nUser: ").strip()
@@ -145,14 +179,9 @@ def chat_loop(
         # Add user message to history
         conversation_history.append({"role": "user", "content": user_input})
 
-        # Get response using updated context
+        # Get response
         response = chat_turn(
-            model,
-            tokenizer,
-            conversation_history,
-            # user_input,
-            max_tokens,
-            max_length,
+            model, tokenizer, conversation_history, chat_config, context_messages, debug
         )
         print(f"\nChatbot: {response}")
 

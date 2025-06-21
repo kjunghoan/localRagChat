@@ -4,6 +4,8 @@ from transformers.models.auto.tokenization_auto import AutoTokenizer as Tokenize
 import torch
 from typing import Tuple
 
+from transformers.utils.quantization_config import BitsAndBytesConfig
+
 
 def get_device() -> torch.device:
     """Determine best available device"""
@@ -17,7 +19,9 @@ def get_device() -> torch.device:
         return device
 
 
-def load_model_and_tokenizer(model_name: str) -> Tuple[ModelType, TokenizerType]:
+def load_model_and_tokenizer(
+    model_name: str, use_quantization: bool = True
+) -> Tuple[ModelType, TokenizerType]:
     """Load and return model and tokenizer"""
     print("Loading model...")
 
@@ -25,10 +29,27 @@ def load_model_and_tokenizer(model_name: str) -> Tuple[ModelType, TokenizerType]
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        # model_name, torch_dtype=torch.float16, device_map="cuda:0", low_cpu_mem_usage=True
-        model_name, torch_dtype=torch.float16, device_map="auto", low_cpu_mem_usage=True
-    )
+    if use_quantization:
+        print("Using 4-bit quantization")
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            quantization_config=bnb_config,
+            device_map="auto",
+            low_cpu_mem_usage=True,
+        )
+    else:
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16,
+            device_map="auto",
+            low_cpu_mem_usage=True,
+        )
 
     print("Model loaded successfully")
     return model, tokenizer
