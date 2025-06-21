@@ -15,8 +15,9 @@ def main():
     """
     Main entry point
     """
+    model_name = "mistralai/Mistral-7B-Instruct-v0.3"
     authenticate()
-    model, tokenizer = load_model_and_tokenizer()
+    model, tokenizer = load_model_and_tokenizer(model_name)
 
     chat_config = ChatConfig(max_tokens=50, max_length=512)
     chat_loop(model, tokenizer, chat_config)

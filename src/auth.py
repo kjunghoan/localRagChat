@@ -3,10 +3,10 @@ import os
 from dotenv import load_dotenv
 
 
-def authenticate():
+def authenticate() -> None:
     """Handle Hugging Face authentication"""
     load_dotenv()
-    token = os.getenv("HF_TOKEN")
+    token: str | None = os.getenv("HF_TOKEN")
 
     if token:
         print("Logging in with token...")
