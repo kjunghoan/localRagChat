@@ -3,6 +3,7 @@ from src.config import AppConfig
 from src.auth import authenticate
 from src.models import load_model_and_tokenizer
 from src.chat import chat_loop
+from src.storage import ConversationStorage
 
 
 def main():
@@ -14,7 +15,6 @@ def main():
     config = AppConfig.production()
     # config = AppConfig.debug_mode()
 
-    # Show what we're using
     if config.debug.enabled:
         print("🤖 Local RAG Chat starting with:")
         print(f"   Model: {config.model.name}")
@@ -35,6 +35,9 @@ def main():
         config.model.name, use_quantization=config.model.use_quantization
     )
 
+    # Optional: Create storage (set to None to disable)
+    storage = ConversationStorage()  # Change to None to disable storage
+
     # Start chat with individual config components
     chat_loop(
         model=model,
@@ -42,6 +45,7 @@ def main():
         chat_config=config.chat,
         debug=config.debug.enabled,
         context_messages=config.chat.context_messages,
+        storage=storage,
     )
 
 

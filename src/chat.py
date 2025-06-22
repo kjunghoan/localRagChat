@@ -78,7 +78,7 @@ def generate_response(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     prompt: str,
-    chat_config: ChatConfig,
+    chat_config,  # ChatConfig from src.config
     debug: bool = False,
 ) -> str:
     """
@@ -153,9 +153,10 @@ def chat_turn(
 def chat_loop(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
-    chat_config: ChatConfig,
+    chat_config,  # ChatConfig from src.config
     debug: bool = False,
     context_messages: int = 6,
+    storage=None,  # Optional ConversationStorage
 ) -> None:
     """
     Interactive chat loop with configuration
@@ -170,6 +171,14 @@ def chat_loop(
         user_input = input("\nUser: ").strip()
 
         if user_input.lower() in ["exit", "quit", "q"]:
+            # Store conversation before exiting
+            if storage and conversation_history:
+                try:
+                    conv_id = storage.store_conversation(conversation_history)
+                    print(f"💾 Conversation saved with ID: {conv_id}")
+                except Exception as e:
+                    print(f"⚠️  Failed to save conversation: {e}")
+
             print("Ending chat session.")
             break
 

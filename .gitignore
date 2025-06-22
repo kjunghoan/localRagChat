@@ -15,6 +15,11 @@ __pycache__/
 # Model cache
 .cache/
 
+# Data and storage
+data/
+*.db
+*.sqlite
+
 # IDE files
 .vscode/
 .idea/
