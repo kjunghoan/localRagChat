@@ -1,22 +1,10 @@
 import torch
-from typing import List, Dict
+from typing import List, Dict, Optional
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
-
-from dataclasses import dataclass
+from src.memory import ConversationalMemory, GracefulSessionManager
 
 ConversationHistory = List[Dict[str, str]]
-
-
-@dataclass
-class ChatConfig:
-    """Chat behavior configuration"""
-
-    max_tokens: int = 150
-    max_length: int = 1024
-    context_messages: int = 6
-    temperature: float = 0.7
-    do_sample: bool = True
 
 
 def build_conversation_context(
@@ -128,7 +116,7 @@ def chat_turn(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     conversation_history: ConversationHistory,
-    chat_config: ChatConfig,
+    chat_config,  # ChatConfig from src.config
     context_messages: int = 6,
     debug: bool = False,
 ) -> str:
@@ -159,34 +147,42 @@ def chat_loop(
     storage=None,  # Optional ConversationStorage
 ) -> None:
     """
-    Interactive chat loop with configuration
+    Interactive chat loop with enhanced memory management
     """
-    conversation_history = []
+    # Initialize memory system
+    memory = ConversationalMemory(
+        vram_limit=context_messages,
+        ram_limit=50,  # Keep 50 messages in RAM before disk spillover
+        storage=storage,
+    )
+
+    # Setup graceful exit handling
+    session_manager = GracefulSessionManager(memory)
+
     print("\nChat Started! Type 'exit' to end the chat.\n")
 
     if debug:
         print("🔍 DEBUG MODE ENABLED")
+        print("🧠 Memory management active (VRAM→RAM→Disk spillover)")
 
     while True:
         user_input = input("\nUser: ").strip()
 
         if user_input.lower() in ["exit", "quit", "q"]:
-            # Store conversation before exiting
-            if storage and conversation_history:
-                try:
-                    conv_id = storage.store_conversation(conversation_history)
-                    print(f"💾 Conversation saved with ID: {conv_id}")
-                except Exception as e:
-                    print(f"⚠️  Failed to save conversation: {e}")
-
+            # Graceful exit with memory cleanup
+            print("💾 Saving session...")
+            memory.session_cleanup()
             print("Ending chat session.")
             break
 
         if not user_input:
             continue
 
-        # Add user message to history
-        conversation_history.append({"role": "user", "content": user_input})
+        # Add user message to memory system
+        memory.add_message("user", user_input)
+
+        # Get conversation context from memory
+        conversation_history = memory.get_ai_context()
 
         # Get response
         response = chat_turn(
@@ -194,5 +190,12 @@ def chat_loop(
         )
         print(f"\nChatbot: {response}")
 
-        # Add chatbot response to history
-        conversation_history.append({"role": "chatbot", "content": response})
+        # Add chatbot response to memory
+        memory.add_message("chatbot", response)
+
+        # Show memory stats in debug mode
+        if debug:
+            stats = memory.get_memory_stats()
+            print(
+                f"🧠 Memory: VRAM {stats['vram_messages']}/{stats['vram_limit']}, RAM {stats['ram_messages']}/{stats['ram_limit']}"
+            )

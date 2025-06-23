@@ -12,8 +12,8 @@ def main():
     """
     # config = AppConfig.default()
     # config = AppConfig.development()
-    config = AppConfig.production()
-    # config = AppConfig.debug_mode()
+    # config = AppConfig.production()
+    config = AppConfig.debug_mode()
 
     if config.debug.enabled:
         print("🤖 Local RAG Chat starting with:")
