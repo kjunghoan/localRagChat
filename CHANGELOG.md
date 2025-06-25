@@ -13,8 +13,41 @@ versioning is not strictly semantic but rather a reflection of the development p
 ### 0.1.0 Goals
 - [X] Add a simple one way vector storage implementation
 - [X] Finalize the intended structure of the codebase (as a stand-alone module)
-- [ ] Simplify the files and try to keep most of the code interconnectable via dependency injection
+- [X] Simplify the files and try to keep most of the code interconnectable via dependency injection
 - [ ] Write a README file
+
+## [0.0.3] - Factory Pattern Architecture & Modular Refactor - 2025-06-25
+
+### Added
+- pytest configuration and test infrastructure (tests to be implemented)
+- Comprehensive test suite with factories, memory, and storage tests
+- Factory pattern for storage with ChromaDB integration
+- Modular configuration system (app, chat, debug, models configs)
+- Rolling chat memory implementation
+- Graceful session manager utility
+- Vector store interface for extensibility
+
+### Changed
+- Refactored monolithic config.py into modular configs package
+- Restructured memory system into dedicated memory module
+- Reorganized storage into dedicated storage module with interface
+- Moved core/temp_app.py to core/app.py for cleaner naming
+- Enhanced factory pattern implementation across components
+- Improved project structure with proper module organization
+
+### Removed
+- Legacy memory.py and storage.py files (replaced with modular versions)
+- Old test files (test.py, test1.py) replaced with proper test structure
+
+### Fixed
+- DialoGPT response parsing for extraction
+- ChromaDB collection creation error handling
+- Memory stats display for simplified rolling memory system
+
+### Tech Debt Addressed
+- Eliminated monolithic config file
+- Standardized logging across all components
+- Improved error handling in storage initialization
 
 ## [0.0.2] - Interim Factory Pattern Refactor - 2025-06-24
 

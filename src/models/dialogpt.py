@@ -18,9 +18,7 @@ class DialoGPTModel(TransformerModelInterface):
 
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        self.logger = create_logger(
-            f"DialoGPTModel", False
-        )  # Models use info level by default
+        self.logger = create_logger("DialoGPTModel", False)
 
     def load(self) -> None:
         """Load DialoGPT model and tokenizer"""
@@ -28,6 +26,7 @@ class DialoGPTModel(TransformerModelInterface):
 
         # Load tokenizer with special tokens
         self.tokenizer = AutoTokenizer.from_pretrained(self.config.name)
+        self.tokenizer.pad_token = self.tokenizer.eos_token  # Use EOS token for padding
 
         # DialoGPT uses special tokens for conversation structure
         if self.tokenizer.pad_token is None:
@@ -93,14 +92,19 @@ class DialoGPTModel(TransformerModelInterface):
         # Split by EOS tokens to get the new response
         if self.tokenizer.eos_token in raw_output:
             parts = raw_output.split(self.tokenizer.eos_token)
-            # Get the last non-empty part (the new response)
+            if debug:
+                self.logger.debug(
+                    f"Split into {len(parts)} parts: {[p[:50] + '...' if len(p) > 50 else p for p in parts]}"
+                )
+
             for part in reversed(parts):
-                if part.strip():
-                    response = part.strip()
+                cleaned_part = part.strip()
+                if cleaned_part:
+                    response = cleaned_part
                     break
+
             if debug:
                 self.logger.debug("Used EOS token extraction")
-
         # Clean up any remaining artifacts
         response = response.strip()
 
@@ -121,20 +125,30 @@ class DialoGPTModel(TransformerModelInterface):
             self.logger.debug(f"Max tokens: {self.config.max_tokens}")
 
         # Encode the conversation
-        input_ids = self.tokenizer.encode(prompt, return_tensors="pt")
+        # input_ids = self.tokenizer.encode(prompt, return_tensors="pt")
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            padding=True,
+            return_attention_mask=True,
+        )
 
-        input_length = input_ids.shape[1]
+        # input_length = input_ids.shape[1]
+        input_length = inputs["input_ids"].shape[1]
+
         if debug:
             self.logger.debug(f"Input token count: {input_length}")
 
         # Move to model device
         device = next(self.model.parameters()).device
-        input_ids = input_ids.to(device)
+        # input_ids = input_ids.to(device)
+        inputs = {k: v.to(device) for k, v in inputs.items()}
 
         # Generate response
         with torch.no_grad():
             outputs = self.model.generate(
-                input_ids,
+                # input_ids,
+                **inputs,
                 max_new_tokens=self.config.max_tokens,
                 temperature=self.config.temperature,
                 do_sample=self.config.do_sample,
@@ -145,11 +159,12 @@ class DialoGPTModel(TransformerModelInterface):
             )
 
         # Decode full response
-        full_response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        new_tokens = outputs[0][input_length:]
+        response = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
 
         if debug:
             output_length = outputs[0].shape[0]
             self.logger.debug(f"Output token count: {output_length}")
             self.logger.debug(f"New tokens generated: {output_length - input_length}")
 
-        return full_response
+        return response

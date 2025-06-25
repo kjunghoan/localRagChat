@@ -8,3 +8,8 @@ nvidia-ml-py3
 # Type checking and linting
 types-requests
 types-torch
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0

@@ -1,22 +1,21 @@
-# src/core/temp_app.py
 """
-Temporary app class while we refactor.
-Contains all the chat logic that was in main.py
+Primary application entry point.
+Contains all the chat logic
 
 TODO:
     Add proper signal handling for Ctrl-C if needed
 """
 
-from src.config import AppConfig
-from src.interfaces.model import ModelConfig
-from src.factories.model import ModelFactory
-from src.storage import ConversationStorage
-from src.utils.logger import create_logger
+from src.configs import AppConfig
+from src.factories import ModelFactory, StorageFactory
+from src.interfaces import ModelConfig
+from src.storage import VectorStoreConfig
+from src.memory import RollingChatMemory
+from src.utils import GracefulSessionManager, create_logger
 
 
-class TempApp:
+class App:
     """
-    Temporary app class to bridge old and new systems.
     TODO:
         Replace with proper ChatOrchestrator + clean separation
     """
@@ -26,13 +25,13 @@ class TempApp:
         self.model = None
         self.memory = None
         self.storage = None
-        self.logger = create_logger("TempApp", config.debug.enabled)
+        self.logger = create_logger("App", config.debug.enabled)
 
     def setup(self):
         """Initialize all components"""
         if self.config.debug.enabled:
-            print("🤖 Local RAG Chat starting with NEW FACTORY SYSTEM:")
-            print(f"   Model: {self.config.model.name}")
+            print("🤖 Local RAG Chat starting:")
+            print(f"   Model: {self.config.model.model.display_name}")
             print(
                 f"   Quantization: {'Enabled' if self.config.model.use_quantization else 'Disabled'}"
             )
@@ -47,19 +46,19 @@ class TempApp:
 
         # Create storage
         self.logger.storage("Creating Storage...")
-        self.storage = ConversationStorage()
+        self.storage = self._create_storage()
 
         # Create memory
         self.logger.memory("Creating memory system...")
         self.memory = self._create_memory()
+        self.session_manager = GracefulSessionManager(self.memory)
 
-        # print("✅ Setup complete!\n")
         self.logger.success("Setup Complete!\n")
 
     def _create_model(self):
         """Create model using factory"""
         model_config = ModelConfig(
-            name=self.config.model.name,
+            name=self.config.model.model.hf_name,
             use_quantization=self.config.model.use_quantization,
             torch_dtype=self.config.model.torch_dtype,
             device_map=self.config.model.device_map,
@@ -68,36 +67,34 @@ class TempApp:
             do_sample=self.config.chat.do_sample,
         )
 
-        # Auto-detect model type
-        """ Detect model type based on name."""
-        if "mistral" in self.config.model.name.lower():
-            model_type = "mistral"
-        elif "dialogpt" in self.config.model.name.lower():
-            model_type = "dialogpt"
-        else:
-            self.logger.warning(f"Unknown model type: {self.config.model.name}. Defaulting to Mistral.")
-            model_type = "mistral"
+        model_type = self.config.model.model.model_type
 
         return ModelFactory.create_and_load(model_type, model_config)
 
+    def _create_storage(self):
+        """Create storage using factory"""
+        storage_config = VectorStoreConfig.for_model(
+            embedding_model=self.config.embedding_model,
+            db_path=str(self.config.data_dir / "vector_store"),
+        )
+        return StorageFactory.create(self.config.storage_type, storage_config)
+
     def _create_memory(self):
         """Create memory system"""
-        # TODO: Use MemoryFactory when ready
-        from src.memory import ConversationalMemory
-
-        return ConversationalMemory(
-            vram_limit=self.config.chat.context_messages,
-            ram_limit=50,
-            storage=self.storage,
+        # TODO: Use MemoryFactory later on if needed
+        return RollingChatMemory(
+            active_limit=self.config.chat.active_limit,
+            vector_store=self.storage,
         )
 
     def chat_turn(self, user_input: str) -> str:
         """Handle a single chat turn"""
-        # Add user message
+        # Add user message to memory
         self.memory.add_message("user", user_input)
 
         # Get context and generate response
-        conversation_history = self.memory.get_ai_context()
+        max_messages = self.config.chat.context_messages
+        conversation_history = self.memory.get_ai_context(max_messages=max_messages)
         response = self.model.generate_response(
             conversation_history, debug=self.config.debug.enabled
         )
@@ -123,17 +120,7 @@ class TempApp:
 
     def _chat_loop(self):
         """Main chat loop"""
-        # Ensure memory is initialized
-        if self.memory is None:
-            raise RuntimeError("Memory not initialized. Call setup() first.")
-
-        # print("Chat Started! Type 'exit' to end.\n")
         self.logger.info("Chat started! Type 'exit' 'q' or <C-c> to end.\n")
-
-        if self.config.debug.enabled:
-            self.logger.model(f"{self.model.__class__.__name__}")
-            self.logger.info(f"{self.model.get_model_info()}")
-
         while True:
             user_input = input("\nUser: ").strip()
 
@@ -153,12 +140,8 @@ class TempApp:
                 if self.config.debug.enabled:
                     stats = self.memory.get_memory_stats()
                     memory_display = (
-                        f"VRAM {stats['vram_messages']}/{stats['vram_limit']}"
+                        f"Active {stats['active_messages']}/{stats['active_limit']}"
                     )
-                    if stats["ram_messages"] > 0:
-                        memory_display += (
-                            f", RAM {stats['ram_messages']}/{stats['ram_limit']}"
-                        )
                     self.logger.memory(f"Memory stats: {memory_display}")
 
             except Exception as e:
@@ -167,4 +150,3 @@ class TempApp:
                     import traceback
 
                     traceback.print_exc()
-

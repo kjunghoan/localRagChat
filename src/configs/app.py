@@ -1,50 +1,44 @@
+"""
+Main application configuration that combines all config modules.
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
+
+from .models import SupportedModel
+from .chat import ChatConfig
+from .debug import DebugConfig
 
 
 @dataclass
 class ModelConfig:
     """Model-related configuration"""
 
-    name: str = "mistralai/Mistral-7B-Instruct-v0.3"
-    use_quantization: bool = True
+    # Model selection using enum
+    # model: SupportedModel = SupportedModel.MISTRAL_7B_INSTRUCT_V03
+    model: SupportedModel = SupportedModel.DIALOGPT_MEDIUM
+
+    # Model loading settings
+    use_quantization: bool = False
     torch_dtype: str = "float16"
     device_map: str = "auto"
-
-
-@dataclass
-class ChatConfig:
-    """Chat behavior configuration"""
-
-    max_tokens: int = 150
-    max_length: int = 1024
-    context_messages: int = 6
-    temperature: float = 0.7
-    do_sample: bool = True
-
-
-@dataclass
-class DebugConfig:
-    """Debug and logging configuration"""
-
-    enabled: bool = False
-    verbose_loading: bool = False
-    show_token_counts: bool = False
-    show_full_responses: bool = False
 
 
 @dataclass
 class AppConfig:
     """Main application configuration"""
 
+    # Component configurations
     model: ModelConfig
     chat: ChatConfig
     debug: DebugConfig
 
     # Data paths
     data_dir: Path = Path("data")
-    conversations_dir: Path = Path("data/conversations")
-    embeddings_dir: Path = Path("data/embeddings")
+
+    # Storage configuration
+    storage_type: str = "chromadb"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     @classmethod
     def default(cls) -> "AppConfig":
@@ -65,8 +59,8 @@ class AppConfig:
         """Configuration optimized for development"""
         config = cls.default()
         config.debug.enabled = True
-        config.chat.context_messages = 4  # Smaller context for faster testing
-        config.chat.max_tokens = 100
+        config.chat.context_messages = 4
+        config.chat.max_tokens = 300
         return config
 
     @classmethod
@@ -80,5 +74,4 @@ class AppConfig:
     def ensure_directories(self) -> None:
         """Create necessary directories"""
         self.data_dir.mkdir(exist_ok=True)
-        self.conversations_dir.mkdir(exist_ok=True)
-        self.embeddings_dir.mkdir(exist_ok=True)
+        (self.data_dir / "vector_stores").mkdir(exist_ok=True)
