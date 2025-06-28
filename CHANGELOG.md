@@ -10,11 +10,20 @@ versioning is not strictly semantic but rather a reflection of the development p
 
 ## [Unreleased]
 
-### 0.1.0 Goals
-- [X] Add a simple one way vector storage implementation
-- [X] Finalize the intended structure of the codebase (as a stand-alone module)
-- [X] Simplify the files and try to keep most of the code interconnectable via dependency injection
-- [ ] Write a README file
+## [0.1.0] - Modular Architecture Foundation - 2025-06-27
+
+- Modular configuration system with separate configs for models, chat, debug, and app settings
+- SupportedModel enum for type-safe model selection and management
+- Factory pattern implementation for models and storage with dependency injection
+- Rolling chat memory system with configurable active limits and automatic overflow handling
+- Vector storage interface with ChromaDB implementation for conversation persistence
+- Graceful session management with signal handling for safe exits
+- Support for multiple AI models (Mistral 7B, DialoGPT Large/Medium) with unified interface
+- Comprehensive installation documentation (INSTALL.md)
+- Project README with architecture overview and roadmap
+- Custom logging system with semantic log levels and timestamps
+- Memory statistics tracking and debugging utilities
+- Conversation viewer and storage inspection tools
 
 ## [0.0.3] - Factory Pattern Architecture & Modular Refactor - 2025-06-25
 
