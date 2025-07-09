@@ -29,6 +29,9 @@ class ModelFactory:
         Raises:
             ValueError: If model_type is not supported
         """
+        if config is None:
+            raise ValueError("Model configuration cannot be None")
+            
         if model_type not in cls._model_registry:
             available = ", ".join(cls._model_registry.keys())
             raise ValueError(

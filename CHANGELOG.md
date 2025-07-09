@@ -10,6 +10,31 @@ versioning is not strictly semantic but rather a reflection of the development p
 
 ## [Unreleased]
 
+## [0.1.1] - Test Infrastructure & Cleanup - 2025-07-09
+
+### Added
+- Comprehensive test configuration system with `tests/conftest.py`
+- Centralized test constants and fixtures for maintainable testing
+- Integration test suite for rolling chat memory system (`tests/integration/test_app_integration.py`)
+- Comprehensive factory testing (`tests/factories/test_model.py`, `tests/factories/test_storage.py`)
+- Null storage support (`StorageFactory.create("null")`) for no-persistence mode
+- `create_null_store()` convenience function for testing and development
+- Configuration validation in model and storage factories
+
+### Fixed
+- Circular import issue between utils and memory modules
+
+### Changed
+- Standardized vector store directory path from `vector_stores` to `vector_store`
+- Updated import structure to avoid circular dependencies
+- Storage factory now supports optional config parameter for null storage
+- Enhanced error messages in factories to include available options
+
+### Removed
+- `debug_storage.py` utility script
+- `view_conversations.py` utility script
+- Removed `GracefulSessionManager` from `utils/__init__.py` exports
+
 ## [0.1.0] - Modular Architecture Foundation - 2025-06-27
 
 - Modular configuration system with separate configs for models, chat, debug, and app settings

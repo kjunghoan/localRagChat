@@ -11,7 +11,8 @@ from src.factories import ModelFactory, StorageFactory
 from src.interfaces import ModelConfig
 from src.storage import VectorStoreConfig
 from src.memory import RollingChatMemory
-from src.utils import GracefulSessionManager, create_logger
+from src.utils import create_logger
+from src.utils.graceful_session_manager import GracefulSessionManager
 
 
 class App:

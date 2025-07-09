@@ -35,3 +35,6 @@ Thumbs.db
 
 # misc
 *something*
+
+# Claude Code instructions (local development only)
+CLAUDE.md
