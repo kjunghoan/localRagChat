@@ -18,23 +18,27 @@ class StorageFactory:
 
     @classmethod
     def create(
-        cls, storage_type: str, config: VectorStoreConfig
+        cls, storage_type: str, config: VectorStoreConfig = None
     ) -> VectorStoreInterface:
         """
         Create a vector storage instance based on type and configuration.
 
         Args:
-            storage_type: Type of storage ("chromadb", "faiss", etc.)
-            config: VectorStoreConfig with storage-specific settings
+            storage_type: Type of storage ("chromadb", "faiss", "null", etc.)
+            config: VectorStoreConfig with storage-specific settings (None for null storage)
 
         Returns:
-            Initialized storage instance
+            Initialized storage instance, or None for null storage
 
         Raises:
             ValueError: If storage_type is not supported
         """
+        # Handle null storage (no persistence)
+        if storage_type == "null":
+            return None
+            
         if storage_type not in cls._storage_registry:
-            available = ", ".join(cls.available_storage_types())
+            available = ", ".join(cls.available_storage_types()) + ", null"
             raise ValueError(
                 f"Unknown storage type '{storage_type}'. Available: {available}"
             )
@@ -63,7 +67,7 @@ class StorageFactory:
         cls._storage_registry[storage_type] = storage_class
 
 
-# Convenience function for common storage creation
+# Convenience functions for common storage creation
 def create_chromadb_store(
     embedding_model: str, db_path: str = "./data/vector_store", **kwargs
 ) -> VectorStoreInterface:
@@ -72,3 +76,8 @@ def create_chromadb_store(
         embedding_model=embedding_model, db_path=db_path, **kwargs
     )
     return StorageFactory.create("chromadb", config)
+
+
+def create_null_store() -> None:
+    """Create null storage (no persistence)"""
+    return StorageFactory.create("null")
