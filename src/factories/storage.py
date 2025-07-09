@@ -65,7 +65,7 @@ class StorageFactory:
 
 # Convenience function for common storage creation
 def create_chromadb_store(
-    embedding_model: str, db_path: str = "./data/vector_stores", **kwargs
+    embedding_model: str, db_path: str = "./data/vector_store", **kwargs
 ) -> VectorStoreInterface:
     """Create a ChromaDB store with sensible defaults"""
     config = VectorStoreConfig(

@@ -15,7 +15,7 @@ class VectorStoreConfig:
 
     embedding_model: str
     version: str
-    db_path: str = "./data/vector_stores"
+    db_path: str = "./data/vector_store"
     base_collection: str = "conversations"
     version: str = "dev"
 

@@ -74,4 +74,4 @@ class AppConfig:
     def ensure_directories(self) -> None:
         """Create necessary directories"""
         self.data_dir.mkdir(exist_ok=True)
-        (self.data_dir / "vector_stores").mkdir(exist_ok=True)
+        (self.data_dir / "vector_store").mkdir(exist_ok=True)
