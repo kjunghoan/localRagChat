@@ -34,5 +34,5 @@ Thumbs.db
 *.orig
 
 # misc
-CLAUDE.md
+**/CLAUDE.md
 .local/

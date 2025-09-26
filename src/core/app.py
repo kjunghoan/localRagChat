@@ -124,6 +124,11 @@ class App:
         self.logger.info("Chat started! Type 'exit' 'q' or <C-c> to end.\n")
         while True:
             user_input = input("\nUser: ").strip()
+            try:
+                user_input = input("\nUser: ").strip()
+            except EOFError:
+                self.logger.info("\n Recieved EOF, ending chat session.")
+                break
 
             if user_input.lower() in ["exit", "quit", "q"]:
                 self.logger.storage("Saving session...")
