@@ -10,6 +10,23 @@ versioning is not strictly semantic but rather a reflection of the development p
 
 ## [Unreleased]
 
+## [0.1.2] - pgvector Support - 2025-09-27
+
+### Added
+- PostgreSQL + pgvector support
+- `PgVectorStore` implementation using psycopg3 for native vector operations
+- Extended `VectorStoreConfig` to support both ChromaDB and PostgreSQL settings
+- `create_pgvector_store()` convenience function in `StorageFactory` class
+- Environment variable support for PostgreSQL connection settings
+
+### Changed
+- Default storage backend from ChromaDB to PostgreSQL + pgvector
+- StorageFactory registry to include `"pgvector"` option
+- Embedding model configuration to use CPU by default for better compatibility
+
+### Dependencies
+- Added `psycopg[binary]>=3.0.0` for PostgreSQL connectivity
+
 ## [0.1.1] - Test Infrastructure & Cleanup - 2025-07-09
 
 ### Added

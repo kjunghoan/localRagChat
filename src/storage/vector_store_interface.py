@@ -2,6 +2,7 @@
 Abstract interface for vector storage backends.
 """
 
+import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
 from dataclasses import dataclass
@@ -11,20 +12,37 @@ ConversationHistory = List[Dict[str, str]]
 
 @dataclass
 class VectorStoreConfig:
-    """Configuration for vector store backends"""
+    """Configuration for vector store backends (ChromaDB, PostgreSQL, etc.)"""
 
     embedding_model: str
-    version: str
-    db_path: str = "./data/vector_store"
-    base_collection: str = "conversations"
     version: str = "dev"
 
+    # ChromaDB specific settings
+    db_path: str = "./data/vector_store"
+    base_collection: str = "conversations"
+
+    # PostgreSQL specific settings
+    postgres_host: Optional[str] = None
+    postgres_port: Optional[int] = None
+    postgres_database: Optional[str] = None
+    postgres_user: Optional[str] = None
+    postgres_password: Optional[str] = None
+    postgres_table: str = "conversations"
+
+    # Common settings
     dimension: Optional[int] = None
     index_type: Optional[str] = None
 
     def __post_init__(self):
         clean_model = self.embedding_model.replace("/", "_").replace("-", "_").lower()
         self.collection_name = f"{self.base_collection}_{clean_model}_{self.version}"
+
+        # Load PostgreSQL settings from environment
+        self.postgres_host = self.postgres_host or os.getenv("POSTGRES_HOST")
+        self.postgres_port = self.postgres_port or (int(os.getenv("POSTGRES_PORT")) if os.getenv("POSTGRES_PORT") else None)
+        self.postgres_database = self.postgres_database or os.getenv("POSTGRES_DATABASE")
+        self.postgres_user = self.postgres_user or os.getenv("POSTGRES_USER")
+        self.postgres_password = self.postgres_password or os.getenv("POSTGRES_PASSWORD")
 
     @classmethod
     def for_model(cls, embedding_model: str, **kwargs) -> "VectorStoreConfig":

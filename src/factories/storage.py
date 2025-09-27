@@ -5,6 +5,7 @@ Factory for creating vector storage instances.
 from typing import Dict, Type, List
 from ..storage.vector_store_interface import VectorStoreInterface, VectorStoreConfig
 from ..storage.chromadb_store import ChromaDBStore
+from ..storage.pgvector_store import PgVectorStore
 
 
 class StorageFactory:
@@ -13,6 +14,7 @@ class StorageFactory:
     # Registry of available storage backends
     _storage_registry: Dict[str, Type[VectorStoreInterface]] = {
         "chromadb": ChromaDBStore,
+        "pgvector": PgVectorStore,
         # "faiss": FaissStore,        # Future implementation
     }
 
@@ -24,7 +26,7 @@ class StorageFactory:
         Create a vector storage instance based on type and configuration.
 
         Args:
-            storage_type: Type of storage ("chromadb", "faiss", "null", etc.)
+            storage_type: Type of storage ("chromadb", "pgvector", "null", etc.)
             config: VectorStoreConfig with storage-specific settings (None for null storage)
 
         Returns:
@@ -36,7 +38,7 @@ class StorageFactory:
         # Handle null storage (no persistence)
         if storage_type == "null":
             return None
-            
+
         if storage_type not in cls._storage_registry:
             available = ", ".join(cls.available_storage_types()) + ", null"
             raise ValueError(
@@ -76,6 +78,12 @@ def create_chromadb_store(
         embedding_model=embedding_model, db_path=db_path, **kwargs
     )
     return StorageFactory.create("chromadb", config)
+
+
+def create_pgvector_store(embedding_model: str, **kwargs) -> VectorStoreInterface:
+    """Create a PostgreSQL + pgvector store using environment variables"""
+    config = VectorStoreConfig(embedding_model=embedding_model, **kwargs)
+    return StorageFactory.create("pgvector", config)
 
 
 def create_null_store() -> None:

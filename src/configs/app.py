@@ -15,8 +15,8 @@ class ModelConfig:
     """Model-related configuration"""
 
     # Model selection using enum
-    # model: SupportedModel = SupportedModel.MISTRAL_7B_INSTRUCT_V03
-    model: SupportedModel = SupportedModel.DIALOGPT_MEDIUM
+    model: SupportedModel = SupportedModel.MISTRAL_7B_INSTRUCT_V03
+    # model: SupportedModel = SupportedModel.DIALOGPT_MEDIUM
 
     # Model loading settings
     use_quantization: bool = False
@@ -37,7 +37,7 @@ class AppConfig:
     data_dir: Path = Path("data")
 
     # Storage configuration
-    storage_type: str = "chromadb"
+    storage_type: str = "pgvector"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
     @classmethod
