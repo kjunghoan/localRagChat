@@ -43,7 +43,7 @@ class MistralModel(TransformerModelInterface):
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.config.name,
-                torch_dtype=getattr(torch, self.config.torch_dtype),
+                dtype=getattr(torch, self.config.torch_dtype),
                 device_map=self.config.device_map,
                 low_cpu_mem_usage=True,
             )

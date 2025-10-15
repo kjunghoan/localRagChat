@@ -19,7 +19,7 @@ class ModelConfig:
     # model: SupportedModel = SupportedModel.DIALOGPT_MEDIUM
 
     # Model loading settings
-    use_quantization: bool = False
+    use_quantization: bool = True
     torch_dtype: str = "float16"
     device_map: str = "auto"
 

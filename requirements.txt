@@ -78,7 +78,6 @@ huggingface-hub==0.33.0
     #   -r requirements.in
     #   accelerate
     #   sentence-transformers
-    #   tokenizers
     #   transformers
 humanfriendly==10.0
     # via coloredlogs
@@ -121,6 +120,7 @@ numpy==2.3.0
     #   onnxruntime
     #   scikit-learn
     #   scipy
+    #   sentence-transformers
     #   transformers
 nvidia-cublas-cu12==12.6.4.1
     # via
@@ -208,6 +208,10 @@ protobuf==5.29.5
     #   opentelemetry-proto
 psutil==7.0.0
     # via accelerate
+psycopg==3.2.10
+    # via -r requirements.in
+psycopg-binary==3.2.10
+    # via psycopg
 pyasn1==0.6.1
     # via
     #   pyasn1-modules
@@ -277,7 +281,7 @@ scipy==1.15.3
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==4.1.0
+sentence-transformers==2.6.1
     # via -r requirements.in
 sentencepiece==0.2.0
     # via -r requirements.in
@@ -302,7 +306,7 @@ tenacity==9.1.2
     # via chromadb
 threadpoolctl==3.6.0
     # via scikit-learn
-tokenizers==0.21.1
+tokenizers==0.13.3
     # via
     #   chromadb
     #   transformers
@@ -318,7 +322,7 @@ tqdm==4.67.1
     #   huggingface-hub
     #   sentence-transformers
     #   transformers
-transformers==4.52.4
+transformers==4.33.0
     # via
     #   -r requirements.in
     #   sentence-transformers
@@ -335,10 +339,10 @@ typing-extensions==4.14.0
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
+    #   psycopg
     #   pydantic
     #   pydantic-core
     #   referencing
-    #   sentence-transformers
     #   torch
     #   typer
     #   typing-inspection
