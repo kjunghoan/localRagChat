@@ -3,9 +3,8 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers.utils.quantization_config import BitsAndBytesConfig
 
-from ..interfaces.model import (
+from .base import (
     TransformerModelInterface,
-    # ModelConfig,
     ConversationHistory,
 )
 

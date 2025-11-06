@@ -1,6 +1,6 @@
 # Local RAG Chat
 
-A local-first conversational AI system with persistent memory and modular architecture.
+A local-first conversational AI system with persistent memory and simplified architecture.
 No external APIs, no internet dependency after initial setup.
 
 
@@ -8,14 +8,14 @@ No external APIs, no internet dependency after initial setup.
 
 Local RAG Chat is part of a microservice-based AI companion that runs entirely on your network.
 It features rolling conversation memory, vector-based storage for long-term recall, and a clean
-factory pattern architecture for easy extensibility.
+environment-based configuration system for easy customization.
 
 ## Key Features
 
-- **🤖 Multiple AI Models**: Support for Multiple interchangeable AI models
-- **🧠 Smart Memory Management**: Rolling context with RAM→Disk spillover
-- **📚 Vector Storage**: ChromaDB integration for conversation history and retrieval
-- **⚙️ Configurable**: Clean config system with model/chat/debug settings
+- **🤖 Multiple AI Models**: Support for multiple interchangeable AI models
+- **🧠 Smart Memory Management**: Rolling context with RAM→Database spillover
+- **📚 Vector Storage**: PostgreSQL + pgvector for conversation history and retrieval
+- **⚙️ Configurable**: Environment-based configuration via .env file
 - **🔄 Local-First**: No external API calls, with caveats, everything runs on your hardware
 - **💾 Persistent Sessions**: Conversations saved and recoverable across restarts
 
@@ -25,10 +25,9 @@ factory pattern architecture for easy extensibility.
 # See INSTALL.md for detailed setup instructions
 git clone git@github.com:kjunghoan/localRagChat.git
 cd localRagChat
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env  # Add your HuggingFace token
-python3 main.py
+uv sync  # Install dependencies with uv
+cp .env.example .env  # Configure settings (HuggingFace token, model choice, etc.)
+uv run main.py
 ```
 
 ## Usage
@@ -43,12 +42,12 @@ Chatbot: I don't have access to real-time weather data, but I'd be happy to help
 ```
 
 ### Model Switching
-Edit `src/configs/app.py`:
-```python
+Edit `.env`:
+```bash
 # Switch between supported models
-model: SupportedModel = SupportedModel.MISTRAL_7B_INSTRUCT_V03
+AI_MODEL=mistralai/Mistral-7B-Instruct-v0.3
 # or
-model: SupportedModel = SupportedModel.DIALOGPT_MEDIUM
+AI_MODEL=microsoft/DialoGPT-medium
 ```
 
 ### Memory Management
@@ -57,42 +56,38 @@ The system automatically manages conversation memory:
 - **Session Storage**: Older messages from current session
 - **Vector Storage**: Persistent storage across sessions
 
-### Viewing Conversations
+### Exiting and Session Management
 ```bash
-# Browse saved conversations
-python3 view_conversations.py
-
-# Debug storage internals
-python3 debug_storage.py
+# Type 'exit', 'quit', or press Ctrl+C to safely exit
+# Conversations are automatically saved to PostgreSQL
 ```
 
 ## Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Core App      │────│  Model Factory   │────│ AI Models       │
-│                 │    │                  │    │ (Mistral/GPT)   │
-└─────────────────┘    └──────────────────┘    │ Local model(tbd)│
-         │                                     └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐
+│   Core App      │────│ AI Models       │
+│                 │    │ (Mistral/GPT)   │
+└─────────────────┘    │ Local model(tbd)│
+         │             └─────────────────┘
          ├── ┌─────────────────┐    ┌──────────────────┐
          │   │ Rolling Memory  │────│ Vector Storage   │
-         │   │                 │    │   (ChromaDB)     │
-         │   └─────────────────┘    └──────────────────┘
-         │
+         │   │                 │    │ (PostgreSQL +    │
+         │   └─────────────────┘    │  pgvector)       │
+         │                          └──────────────────┘
          └── ┌─────────────────┐
-             │ Config System   │
-             │ (Modular)       │
+             │ Configuration   │
+             │ (.env file)     │
              └─────────────────┘
 ```
 
 ### Key Components
 
 - **Core App** (`src/core/`): Application orchestration and chat loop
-- **Models** (`src/models/`): AI model implementations with unified interface
+- **Models** (`src/models/`): AI model implementations (Mistral, DialoGPT)
 - **Memory** (`src/memory/`): Rolling conversation memory with spillover management
-- **Storage** (`src/storage/`): Vector storage interface and ChromaDB implementation
-- **Factories** (`src/factories/`): Component creation with dependency injection
-- **Configs** (`src/configs/`): Modular configuration system
+- **Storage** (`src/storage/`): PostgreSQL + pgvector implementation for conversation persistence
+- **Config** (`src/config.py`): Unified configuration loaded from environment variables
 
 ## Configuration
 
@@ -102,18 +97,19 @@ python3 debug_storage.py
 - **DialoGPT Medium**: Lightest option, good for limited resources
 
 ### Memory Settings
-```python
-# In src/configs/chat.py
-max_tokens: int = 300        # Response length
-active_limit: int = 100      # Messages in active memory  
-context_messages: int = 6    # AI context window
+```bash
+# In .env
+CHAT_MAX_TOKENS=300           # Response length
+CHAT_ACTIVE_LIMIT=100         # Messages in active memory
+CHAT_CONTEXT_MESSAGES=6       # AI context window
 ```
 
 ### Performance Tuning
-```python
-# In src/configs/app.py
-use_quantization: bool = True   # Reduce memory usage
-torch_dtype: str = "float16"    # Optimize for your hardware
+```bash
+# In .env
+USE_QUANTIZATION=true         # Reduce memory usage
+TORCH_DTYPE=float16           # Optimize for your hardware
+LOG_LEVEL=INFO                # Logging verbosity (DEBUG, INFO, WARNING, ERROR)
 ```
 
 ## Requirements
@@ -132,27 +128,27 @@ See [INSTALL.md](INSTALL.md) for detailed installation instructions.
 localRagChat/
 ├── src/
 │   ├── core/          # Application orchestration
-│   ├── models/        # AI model implementations  
+│   ├── models/        # AI model implementations
 │   ├── memory/        # Memory management
-│   ├── storage/       # Vector storage
-│   ├── factories/     # Component factories
-│   ├── configs/       # Configuration system
-│   └── utils/         # Utilities (logging, etc.)
-├── data/              # Generated data directory
+│   ├── storage/       # Vector storage (PostgreSQL + pgvector)
+│   ├── utils/         # Utilities (logging, etc.)
+│   ├── config.py      # Unified configuration
+│   └── auth.py        # Authentication (HuggingFace token)
+├── tests/             # Test suite
+├── .env.example       # Example environment configuration
 ├── INSTALL.md         # Installation guide
-└── main.py           # Entry point
+└── main.py            # Entry point
 ```
 
 ### Adding New Models
-1. Implement `TransformerModelInterface` in `src/models/`
-2. Add to `SupportedModel` enum in `src/configs/models.py`
-3. Register in `ModelFactory` registry
-4. Update model mappings
+1. Implement `ModelInterface` in `src/models/`
+2. Update `_create_model()` in `src/core/app.py` to support the new model
+3. Set `AI_MODEL` in `.env` to the HuggingFace model name
 
 ### Extending Storage
-1. Implement `VectorStoreInterface` in `src/storage/`
-2. Register in `StorageFactory`
-3. Add configuration options
+1. Create new storage implementation in `src/storage/`
+2. Update `_create_storage()` in `src/core/app.py`
+3. Add required configuration to `VectorStoreConfig`
 
 ## Roadmap
 

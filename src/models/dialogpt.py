@@ -2,7 +2,7 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from ..interfaces.model import (
+from .base import (
     TransformerModelInterface,
     ModelConfig,
     ConversationHistory,

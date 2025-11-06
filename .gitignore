@@ -11,6 +11,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
 
 # Model cache
 .cache/
@@ -36,3 +37,5 @@ Thumbs.db
 # misc
 **/CLAUDE.md
 .local/
+.harper-dictionary.txt
+API_CONVERSION_PLAN.md

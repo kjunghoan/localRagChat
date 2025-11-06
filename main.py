@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
-from src.configs import AppConfig
+from dotenv import load_dotenv
+from src.config import Config
 from src.auth import authenticate
 from src.core.app import App
 
 
 def main():
-    """
-    Main entry point
-    """
-    # Load configs
-    # config = AppConfig.default()
-    config = AppConfig.development()
-    # config = AppConfig.production()
-    # config = AppConfig.debug_mode()
-
+    load_dotenv()
+    config = Config.from_env()
     authenticate()
     app = App(config)
     app.run()

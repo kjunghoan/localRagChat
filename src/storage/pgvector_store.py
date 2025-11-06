@@ -1,8 +1,3 @@
-"""
-PostgreSQL + pgvector implementation of vector storage interface.
-"""
-
-# import os
 import json
 import uuid
 from typing import List, Dict, Optional, Any
@@ -11,36 +6,27 @@ from datetime import datetime
 import torch
 import psycopg
 from psycopg.rows import dict_row
+from psycopg import sql
 from sentence_transformers import SentenceTransformer
 
 from src.utils.logger import create_logger
-from .vector_store_interface import (
-    VectorStoreInterface,
-    VectorStoreConfig,
-    ConversationHistory,
-)
+from .vector_store_interface import VectorStoreConfig, ConversationHistory
 
 
-class PgVectorStore(VectorStoreInterface):
-    """PostgreSQL + pgvector implementation of VectorStoreInterface"""
-
+class PgVectorStore:
     def __init__(self, config: VectorStoreConfig):
-        super().__init__(config)
+        self.config = config
         self.logger = create_logger("PgVectorStore")
         self._conn = None
         self._embedding_model = None
         self._initialize()
 
     def _is_cuda_available(self) -> bool:
-        """Check if CUDA is available for GPU acceleration"""
         return torch.cuda.is_available()
 
     def _initialize(self):
-        """Initialize PostgreSQL connection and embedding model"""
         try:
-            conn_str = f"postgresql://{self.config.postgres_user}:{self.config.postgres_password}@{self.config.postgres_host}:{self.config.postgres_port}/{self.config.postgres_database}"
-
-            self._conn = psycopg.connect(conn_str, row_factory=dict_row)
+            self._conn = psycopg.connect(self.config.database_url, row_factory=dict_row)
             self._conn.autocommit = True
 
             # Load embedding model (use CUDA if available for better performance)
@@ -54,7 +40,7 @@ class PgVectorStore(VectorStoreInterface):
             self._setup_schema()
 
             self.logger.info(
-                f"Connected to PostgreSQL at {self.config.postgres_host}:{self.config.postgres_port}"
+                f"Connected to PostgreSQL: {self.config.database_url.split('@')[1]}"
             )
 
         except Exception as e:
@@ -72,24 +58,39 @@ class PgVectorStore(VectorStoreInterface):
             embedding_dim = len(sample_embedding)
 
             # Create conversations table
-            cur.execute(f"""
-                CREATE TABLE IF NOT EXISTS {self.config.postgres_table} (
-                    id UUID PRIMARY KEY,
-                    content TEXT NOT NULL,
-                    embedding vector({embedding_dim}),
-                    metadata JSONB,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    message_count INTEGER,
-                    conversation_json JSONB
-                );
-            """)
+            cur.execute(
+                sql.SQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS {} (
+                        id UUID PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        embedding vector({}),
+                        metadata JSONB,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        message_count INTEGER,
+                        conversation_json JSONB
+                    );
+                """
+                ).format(
+                    sql.Identifier(self.config.postgres_table),
+                    sql.Literal(embedding_dim),
+                )
+            )
 
             # Create index for vector similarity search
-            cur.execute(f"""
-                CREATE INDEX IF NOT EXISTS {self.config.postgres_table}_embedding_idx
-                ON {self.config.postgres_table}
-                USING hnsw (embedding vector_cosine_ops);
-            """)
+            index_name = f"{self.config.postgres_table}_embedding_idx"
+            cur.execute(
+                sql.SQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS {}
+                    ON {}
+                    USING hnsw (embedding vector_cosine_ops);
+                """
+                ).format(
+                    sql.Identifier(index_name),
+                    sql.Identifier(self.config.postgres_table),
+                )
+            )
 
     def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text using sentence transformer"""
@@ -112,11 +113,13 @@ class PgVectorStore(VectorStoreInterface):
 
         with self._conn.cursor() as cur:
             cur.execute(
-                f"""
-                INSERT INTO {self.config.postgres_table}
-                (id, content, embedding, metadata, message_count, conversation_json)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """,
+                sql.SQL(
+                    """
+                    INSERT INTO {}
+                    (id, content, embedding, metadata, message_count, conversation_json)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                ).format(sql.Identifier(self.config.postgres_table)),
                 (
                     conversation_id,
                     conversation_text,
@@ -137,11 +140,13 @@ class PgVectorStore(VectorStoreInterface):
         try:
             with self._conn.cursor() as cur:
                 cur.execute(
-                    f"""
-                    SELECT conversation_json
-                    FROM {self.config.postgres_table}
-                    WHERE id = %s
-                """,
+                    sql.SQL(
+                        """
+                        SELECT conversation_json
+                        FROM {}
+                        WHERE id = %s
+                    """
+                    ).format(sql.Identifier(self.config.postgres_table)),
                     (conversation_id,),
                 )
 
@@ -159,12 +164,14 @@ class PgVectorStore(VectorStoreInterface):
         try:
             with self._conn.cursor() as cur:
                 cur.execute(
-                    f"""
-                    SELECT id, created_at, message_count, metadata
-                    FROM {self.config.postgres_table}
-                    ORDER BY created_at DESC
-                    LIMIT %s
-                """,
+                    sql.SQL(
+                        """
+                        SELECT id, created_at, message_count, metadata
+                        FROM {}
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                    """
+                    ).format(sql.Identifier(self.config.postgres_table)),
                     (limit,),
                 )
 
@@ -173,9 +180,11 @@ class PgVectorStore(VectorStoreInterface):
                     conversations.append(
                         {
                             "id": str(row["id"]),
-                            "stored_at": row["created_at"].isoformat()
-                            if row["created_at"]
-                            else "",
+                            "stored_at": (
+                                row["created_at"].isoformat()
+                                if row["created_at"]
+                                else ""
+                            ),
                             "message_count": row["message_count"],
                             "metadata": row["metadata"],
                         }
@@ -194,17 +203,19 @@ class PgVectorStore(VectorStoreInterface):
 
             with self._conn.cursor() as cur:
                 cur.execute(
-                    f"""
-                    SELECT
-                        id,
-                        created_at,
-                        message_count,
-                        metadata,
-                        1 - (embedding <=> %s) as similarity_score
-                    FROM {self.config.postgres_table}
-                    ORDER BY embedding <=> %s
-                    LIMIT %s
-                """,
+                    sql.SQL(
+                        """
+                        SELECT
+                            id,
+                            created_at,
+                            message_count,
+                            metadata,
+                            1 - (embedding <=> %s) as similarity_score
+                        FROM {}
+                        ORDER BY embedding <=> %s
+                        LIMIT %s
+                    """
+                    ).format(sql.Identifier(self.config.postgres_table)),
                     (query_embedding, query_embedding, limit),
                 )
 
@@ -213,13 +224,17 @@ class PgVectorStore(VectorStoreInterface):
                     similar_conversations.append(
                         {
                             "id": str(row["id"]),
-                            "stored_at": row["created_at"].isoformat()
-                            if row["created_at"]
-                            else "",
+                            "stored_at": (
+                                row["created_at"].isoformat()
+                                if row["created_at"]
+                                else ""
+                            ),
                             "message_count": row["message_count"],
-                            "similarity_score": float(row["similarity_score"])
-                            if row["similarity_score"]
-                            else None,
+                            "similarity_score": (
+                                float(row["similarity_score"])
+                                if row["similarity_score"]
+                                else None
+                            ),
                             "metadata": row["metadata"],
                         }
                     )
@@ -251,14 +266,18 @@ class PgVectorStore(VectorStoreInterface):
         """Get database statistics"""
         try:
             with self._conn.cursor() as cur:
-                cur.execute(f"""
-                    SELECT
-                        COUNT(*) as total_conversations,
-                        AVG(message_count) as avg_messages_per_conversation,
-                        MAX(created_at) as latest_conversation,
-                        MIN(created_at) as oldest_conversation
-                    FROM {self.config.postgres_table}
-                """)
+                cur.execute(
+                    sql.SQL(
+                        """
+                        SELECT
+                            COUNT(*) as total_conversations,
+                            AVG(message_count) as avg_messages_per_conversation,
+                            MAX(created_at) as latest_conversation,
+                            MIN(created_at) as oldest_conversation
+                        FROM {}
+                    """
+                    ).format(sql.Identifier(self.config.postgres_table))
+                )
 
                 result = cur.fetchone()
                 return dict(result) if result else {}
@@ -272,4 +291,3 @@ class PgVectorStore(VectorStoreInterface):
         if self._conn and not self._conn.closed:
             self._conn.close()
             self.logger.info("Closed PostgreSQL connection")
-

@@ -5,14 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-This project is meant to be a distilled module that will go into a larger project, so the
-versioning is not strictly semantic but rather a reflection of the development process.
+This project is meant to be a distilled module that will go into a larger project
+The versioning is not strictly semantic but rather a reflection of the development
+process.
 
 ## [Unreleased]
+
+## [0.1.3] - Clean up - 2025-11-06
+
+### Changed
+
+- Unified configuration system - all settings now load from environment variables via single
+    `src/config.py`
+- Simplified application entry point - `main.py` now just 13 lines
+- Direct model instantiation - removed factory pattern overhead
+- Moved model interface from `src/interfaces/` to `src/models/base.py` for better
+    organization
+- Consolidated PostgreSQL configuration to single `DATABASE_URL` environment variable
+- Replaced binary debug flag with standard log levels (DEBUG, INFO, WARNING, ERROR)
+
+### Added
+
+- New environment variables for chat configuration: `CHAT_MAX_TOKENS`,
+    `CHAT_TEMPERATURE`, `CHAT_CONTEXT_MESSAGES`, etc.
+- `LOG_LEVEL` environment variable for standardized logging
+- Comprehensive `.env.example` with all configuration options
+
+### Removed
+
+- `src/configs/` directory - replaced with unified `src/config.py`
+- `src/factories/` directory - removed ModelFactory and StorageFactory
+- `src/interfaces/` directory - moved to `src/models/base.py`
+- Factory methods: `AppConfig.default()`, `debug_mode()`, `development()`, `production()`
+- ChromaDB storage backend
+- Over 2,000 lines of unnecessary abstraction code
+
+### Fixed
+
+- SQL injection prevention in pgvector queries using `sql.SQL()` composition
+- Index creation syntax error in PostgreSQL schema setup
+- Environment variable loading before config initialization
 
 ## [0.1.2] - pgvector Support - 2025-09-27
 
 ### Added
+
 - PostgreSQL + pgvector support
 - `PgVectorStore` implementation using psycopg3 for native vector operations
 - Extended `VectorStoreConfig` to support both ChromaDB and PostgreSQL settings
@@ -20,16 +57,19 @@ versioning is not strictly semantic but rather a reflection of the development p
 - Environment variable support for PostgreSQL connection settings
 
 ### Changed
+
 - Default storage backend from ChromaDB to PostgreSQL + pgvector
 - StorageFactory registry to include `"pgvector"` option
 - Embedding model configuration to use CPU by default for better compatibility
 
 ### Dependencies
+
 - Added `psycopg[binary]>=3.0.0` for PostgreSQL connectivity
 
 ## [0.1.1] - Test Infrastructure & Cleanup - 2025-07-09
 
 ### Added
+
 - Comprehensive test configuration system with `tests/conftest.py`
 - Centralized test constants and fixtures for maintainable testing
 - Integration test suite for rolling chat memory system (`tests/integration/test_app_integration.py`)
@@ -39,30 +79,36 @@ versioning is not strictly semantic but rather a reflection of the development p
 - Configuration validation in model and storage factories
 
 ### Fixed
+
 - Circular import issue between utils and memory modules
 
 ### Changed
+
 - Standardized vector store directory path from `vector_stores` to `vector_store`
 - Updated import structure to avoid circular dependencies
 - Storage factory now supports optional config parameter for null storage
 - Enhanced error messages in factories to include available options
 
 ### Removed
+
 - `debug_storage.py` utility script
 - `view_conversations.py` utility script
 - Removed `GracefulSessionManager` from `utils/__init__.py` exports
 
 ## [0.1.0] - Modular Architecture Foundation - 2025-06-27
 
-- Modular configuration system with separate configs for models, chat, debug, and app settings
+- Modular configuration system with separate configs for models, chat, debug, and
+    app settings
 - SupportedModel enum for type-safe model selection and management
 - Factory pattern implementation for models and storage with dependency injection
-- Rolling chat memory system with configurable active limits and automatic overflow handling
+- Rolling chat memory system with configurable active limits and automatic overflow
+    handling
 - Vector storage interface with ChromaDB implementation for conversation persistence
 - Graceful session management with signal handling for safe exits
-- Support for multiple AI models (Mistral 7B, DialoGPT Large/Medium) with unified interface
+- Support for multiple AI models (Mistral 7B, DialoGPT Large/Medium) with unified
+    interface
 - Comprehensive installation documentation (INSTALL.md)
-- Project README with architecture overview and roadmap
+- Project README with architecture overview and road map
 - Custom logging system with semantic log levels and timestamps
 - Memory statistics tracking and debugging utilities
 - Conversation viewer and storage inspection tools
@@ -70,7 +116,8 @@ versioning is not strictly semantic but rather a reflection of the development p
 ## [0.0.3] - Factory Pattern Architecture & Modular Refactor - 2025-06-25
 
 ### Added
-- pytest configuration and test infrastructure (tests to be implemented)
+
+- Pytest configuration and test infrastructure (tests to be implemented)
 - Comprehensive test suite with factories, memory, and storage tests
 - Factory pattern for storage with ChromaDB integration
 - Modular configuration system (app, chat, debug, models configs)
@@ -79,6 +126,7 @@ versioning is not strictly semantic but rather a reflection of the development p
 - Vector store interface for extensibility
 
 ### Changed
+
 - Refactored monolithic config.py into modular configs package
 - Restructured memory system into dedicated memory module
 - Reorganized storage into dedicated storage module with interface
@@ -87,15 +135,18 @@ versioning is not strictly semantic but rather a reflection of the development p
 - Improved project structure with proper module organization
 
 ### Removed
+
 - Legacy memory.py and storage.py files (replaced with modular versions)
 - Old test files (test.py, test1.py) replaced with proper test structure
 
 ### Fixed
+
 - DialoGPT response parsing for extraction
 - ChromaDB collection creation error handling
 - Memory stats display for simplified rolling memory system
 
 ### Tech Debt Addressed
+
 - Eliminated monolithic config file
 - Standardized logging across all components
 - Improved error handling in storage initialization
@@ -103,24 +154,29 @@ versioning is not strictly semantic but rather a reflection of the development p
 ## [0.0.2] - Interim Factory Pattern Refactor - 2025-06-24
 
 ### Added
+
 - TransformerModelInterface with factory pattern for easy model switching
 - Custom Logger class with semantic methods and timestamps
 - Support for DialoGPT models alongside Mistral
 - Modular package structure (interfaces/, factories/, core/, utils/)
 
 ### Changed
+
 - Refactored main.py into clean entry point with `TempApp` orchestrator
 - Replaced scattered print statements with consistent logging module
 
 ### Fixed
+
 - Ctrl-C signal handling now properly saves sessions
 
 ### Breaking Changes
+
 - Removed direct model loading - now requires Model Factory pattern
 
 ## [0.0.1] - Initial Setup - 2025-06-20
 
 ### Added
+
 - Requirements file structure
 - Main modules for auth, chat, and models
 - Naive config system
